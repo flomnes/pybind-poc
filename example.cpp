@@ -4,32 +4,46 @@
 
 namespace py = pybind11;
 
-class Animal {
+// Serialization / deserialization
+class Pickleable {
 public:
-    virtual ~Animal() { }
-    virtual std::string go(int n_times) = 0;
+    Pickleable(const std::string &value) : m_value(value) { }
+    const std::string &value() const { return m_value; }
+
+    void setExtra(int extra) { m_extra = extra; }
+    int extra() const { return m_extra; }
+private:
+    std::string m_value;
+    int m_extra = 0;
 };
 
-class Dog : public Animal {
-public:
-    std::string go(int n_times) override {
-        std::string result;
-        for (int i=0; i<n_times; ++i)
-            result += "woof! ";
-        return result;
-    }
-};
-
-std::string call_go(Animal *animal) {
-    return animal->go(3);
-}
 
 PYBIND11_MODULE(example, m) {
-    py::class_<Animal>(m, "Animal")
-        .def("go", &Animal::go);
+    py::class_<Pickleable>(m, "Pickleable")
+    .def(py::init<std::string>())
+    .def("value", &Pickleable::value)
+    .def("extra", &Pickleable::extra)
+    .def("setExtra", &Pickleable::setExtra)
+    .def(py::pickle(
+        [](const Pickleable &p) { // __getstate__
+            /* Return a tuple that fully encodes the state of the object */
+            return py::make_tuple(p.value(), p.extra());
+        },
+        [](py::tuple t) { // __setstate__
+            if (t.size() != 2)
+                throw std::runtime_error("Invalid state!");
 
-    py::class_<Dog, Animal>(m, "Dog")
-        .def(py::init<>());
+            /* Create a new C++ instance */
+            Pickleable p(t[0].cast<std::string>());
 
-    m.def("call_go", &call_go);
+            /* Assign any additional state */
+            p.setExtra(t[1].cast<int>());
+
+            return p;
+        }
+    ))
+      .def("__repr__",
+           [](const Pickleable& p) {
+             return "<Pickleable " + p.value() +">";
+           });
 }
