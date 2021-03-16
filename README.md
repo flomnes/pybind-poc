@@ -37,9 +37,6 @@ cmake --build .
 mpirun python3 test.py
 ```
 
-## TODO
-Programs hangs, does not exit.
-
 ## Sources
 [Pickling support](https://pybind11.readthedocs.io/en/stable/advanced/classes.html#pickling-support)
 
